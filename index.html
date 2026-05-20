@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>A+G Air - ND Calc</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ND Calc">
+
+    <style>
+        :root {
+            --bg-color: #0a0a0c;
+            --card-bg: #16161a;
+            --accent-color: #007aff;
+            --text-color: #ffffff;
+            --text-muted: #8e8e93;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: calc(40px + env(safe-area-inset-top)) 20px env(safe-area-inset-bottom) 20px;
+            overflow-x: hidden;
+        }
+
+        header {
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        /* Segmented Control stile iOS */
+        .segmented-control {
+            display: flex;
+            background-color: #1c1c1e;
+            border-radius: 10px;
+            padding: 2px;
+            margin-bottom: 5px;
+        }
+
+        .segmented-control button {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 0;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .segmented-control button.active {
+            background-color: #3a3a3c;
+            color: var(--text-color);
+        }
+
+        /* Scanner Area */
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            height: 180px;
+            background-color: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #camera-view {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .target-ring {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            border: 3px dashed var(--accent-color);
+            border-radius: 50%;
+            pointer-events: none;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary:active {
+            opacity: 0.8;
+        }
+
+        /* Display Risultato */
+        .result-box {
+            text-align: center;
+            padding: 25px 10px;
+        }
+
+        .nd-value {
+            font-size: 64px;
+            font-weight: 800;
+            color: var(--text-color);
+            line-height: 1;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .settings-suggested {
+            font-size: 16px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .settings-suggested strong {
+            color: #34c759;
+        }
+
+        #lux-debug {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            font-family: monospace;
+        }
+
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>A+G AIR // ND TOOL</h1>
+        <div class="subtitle">Mavic 4 Pro Setup</div>
+    </header>
+
+    <div class="card">
+        <label>Target Frame Rate (Shutter 180°)</label>
+        <div class="segmented-control" id="fps-control">
+            <button class="active" onclick="setFps(25, this)">25 fps <span style="font-size:10px; block; color:#8e8e93;"><br>(1/50)</span></button>
+            <button onclick="setFps(50, this)">50 fps <span style="font-size:10px; block; color:#8e8e93;"><br>(1/100)</span></button>
+            <button onclick="setFps(60, this)">60 fps <span style="font-size:10px; block; color:#8e8e93;"><br>(1/120)</span></button>
+        </div>
+    </div>
+
+    <div class="card">
+        <label>Analisi Luminosità Ambientale</label>
+        <div class="scanner-container">
+            <video id="camera-view" autoplay playsinline muted></video>
+            <div class="target-ring"></div>
+        </div>
+        <button class="btn-primary" id="scan-btn" onclick="analyzeLight()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            CAMPIONA LUCE CIELO
+        </button>
+    </div>
+
+    <div class="card result-box">
+        <label>Filtro ND Consigliato</label>
+        <div class="nd-value" id="nd-output">--</div>
+        <div class="settings-suggested" id="settings-output">Imposta il frame rate e scansiona la scena.</div>
+        <div id="lux-debug">EV Stimato: -- | Target: --</div>
+    </div>
+
+    <canvas id="analyzer-canvas" width="100" height="100"></canvas>
+
+    <script>
+        let targetFps = 25;
+        let targetShutter = 50; // 1/50
+        let video = document.getElementById('camera-view');
+        let canvas = document.getElementById('analyzer-canvas');
+        let ctx = canvas.getContext('2d');
+
+        // Mappatura delle specifiche del Mavic 4 Pro
+        // Cerchiamo di mantenere il diaframma intorno a f/4 - f/5.6 per la massima nitidezza della lente
+        const SWEET_SPOT_APERTURE = 4.0; 
+        const ISO_BASE = 100;
+
+        // Inizializza la fotocamera posteriore dell'iPhone all'avvio
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { exact: "environment" },
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.log("Tentativo camera posteriore nativa fallito, provo generica...");
+                // Fallback se il vincolo 'exact environment' fallisce (es. su simulatori)
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    video.srcObject = fallbackStream;
+                } catch (e) {
+                    document.getElementById('settings-output').innerText = "Attiva i permessi della fotocamera nelle impostazioni.";
+                }
+            }
+        }
+
+        function setFps(fps, element) {
+            targetFps = fps;
+            targetShutter = fps * 2; // Regola dei 180 gradi
+            
+            // Aggiorna grafica pulsanti
+            let buttons = document.querySelectorAll('#fps-control button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+            
+            // Ricalcola se c'è già un valore analizzato
+            if(lastLuminance !== null) {
+                calculateND(lastLuminance);
+            }
+        }
+
+        let lastLuminance = null;
+
+        function analyzeLight() {
+            if (!video.srcObject) return;
+
+            // Disegna la porzione centrale del video sul canvas per l'analisi dei pixel
+            // Prendiamo un quadrato centrale di 60x60 pixel per evitare i bordi
+            const sourceX = (video.videoWidth - 60) / 2;
+            const sourceY = (video.videoHeight - 60) / 2;
+            
+            ctx.drawImage(video, sourceX, sourceY, 60, 60, 0, 0, 100, 100);
+            
+            const imgData = ctx.getImageData(0, 0, 100, 100);
+            const data = imgData.data;
+            
+            let totalLuminance = 0;
+
+            // Calcolo della luminanza percepita pixel per pixel (Formula standard BT.709)
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i];
+                let g = data[i+1];
+                let b = data[i+2];
+                
+                // Luminanza standard
+                let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                totalLuminance += luminance;
+            }
+
+            // Media dei pixel (valore da 0 a 255)
+            const avgLuminance = totalLuminance / (data.length / 4);
+            lastLuminance = avgLuminance;
+            
+            calculateND(avgLuminance);
+        }
+
+        function calculateND(luminance) {
+            // Poiché iOS compensa l'esposizione automaticamente, mappiamo la deviazione empirica.
+            // Un'immagine puntata al cielo luminoso che satura verso il bianco indica luce estrema.
+            // Mappiamo la luminanza letta su una scala EV (Exposure Value) realistica per le ore diurne.
+            
+            let ev = 11; // Base nuvoloso coperto
+            
+            if (luminance > 220) {
+                ev = 16; // Sole pieno riflesso (Neve, Acqua, Spiaggia chiara)
+            } else if (luminance > 170) {
+                ev = 15; // Sole diretto, cielo terso
+            } else if (luminance > 130) {
+                ev = 14; // Sole leggermente velato
+            } else if (luminance > 90) {
+                ev = 13; // Nuvoloso luminoso / Ombra aperta
+            } else {
+                ev = 11; // Nuvoloso intenso / Tardo pomeriggio
+            }
+
+            // Formula fotografica inversa per calcolare lo Shutter Speed necessario a ISO 100 e Diaframma f/4
+            // N=4 (Apertura), t = tempo di scatto. EV = log2(N^2 / t) -> t = N^2 / 2^EV
+            let requiredShutter = Math.pow(SWEET_SPOT_APERTURE, 2) / Math.pow(2, ev - 0.5); // correzione empirica
+            let idealShutterDenominator = 1 / requiredShutter;
+
+            // Quanti stop di differenza ci sono tra lo shutter ideale teorico e quello che vogliamo usare (targetShutter)?
+            // Ogni stop raddoppia o dimezza la luce.
+            let stopDifference = Math.log2(idealShutterDenominator / targetShutter);
+
+            let ndFilter = "NESSUNO";
+            let suggestedAperture = "f/4.0";
+
+            if (stopDifference > 0) {
+                // Troviamo il filtro ND più vicino arrotondando gli stop matematici
+                if (stopDifference <= 1.5) {
+                    ndFilter = "ND4";
+                    // Piccoli aggiustamenti sul diaframma variabile del Mavic 4 Pro per compensare i mezzi stop
+                    suggestedAperture = "f/4.0";
+                } else if (stopDifference > 1.5 && stopDifference <= 3.5) {
+                    ndFilter = "ND8";
+                    suggestedAperture = stopDifference > 2.5 ? "f/5.6" : "f/4.0";
+                } else if (stopDifference > 3.5 && stopDifference <= 4.5) {
+                    ndFilter = "ND16";
+                    suggestedAperture = "f/4.0";
+                } else if (stopDifference > 4.5 && stopDifference <= 5.5) {
+                    ndFilter = "ND32";
+                    suggestedAperture = "f/4.0";
+                } else if (stopDifference > 5.5 && stopDifference <= 6.5) {
+                    ndFilter = "ND64";
+                    suggestedAperture = "f/4.0";
+                } else if (stopDifference > 6.5) {
+                    ndFilter = "ND128";
+                    suggestedAperture = "f/5.6";
+                }
+            }
+
+            // Interfaccia Feedback grafico Haptics/Visivo
+            document.getElementById('nd-output').innerText = ndFilter;
+            
+            if(ndFilter === "NESSUNO") {
+                document.getElementById('settings-output').innerHTML = `Luce bassa. Chiudi il diaframma a <strong>${suggestedAperture}</strong> senza filtri.`;
+            } else {
+                document.getElementById('settings-output').innerHTML = `Monta <strong>${ndFilter}</strong> e imposta la camera a <strong>${suggestedAperture}</strong>`;
+            }
+            
+            document.getElementById('lux-debug').innerText = `EV Stimato: ${ev} | Target Shutter: 1/${targetShutter}s`;
+        }
+
+        // Avvia la fotocamera quando la pagina è caricata
+        window.addEventListener('DOMContentLoaded', initCamera);
+    </script>
+</body>
+</html>
