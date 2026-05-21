@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>A+G Air - ND Fleet Calc</title>
-    
+    <title>APLUSG - ND Fleet Calc</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ND Calc">
-
     <style>
         :root {
             --bg-color: #0a0a0c;
@@ -17,14 +15,12 @@
             --text-color: #ffffff;
             --text-muted: #8e8e93;
         }
-
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
             -webkit-tap-highlight-color: transparent;
         }
-
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
@@ -32,30 +28,30 @@
             padding: calc(30px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom)) 20px;
             overflow-x: hidden;
         }
-
         header {
-            margin-bottom: 20px;
+            margin-bottom: 22px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
         }
-
-        h1 {
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
+        .brand-logo {
+            height: 28px; 
+            width: auto;
+            object-fit: contain;
+            margin-bottom: 6px;
         }
-
         .subtitle {
             color: var(--text-muted);
-            font-size: 13px;
-            margin-top: 2px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
-
         .card {
             background-color: var(--card-bg);
             border-radius: 14px;
             padding: 16px;
             margin-bottom: 15px;
         }
-
         label {
             display: block;
             font-size: 11px;
@@ -65,7 +61,6 @@
             margin-bottom: 8px;
             font-weight: 600;
         }
-
         .segmented-control {
             display: flex;
             background-color: #1c1c1e;
@@ -73,7 +68,6 @@
             padding: 2px;
             gap: 2px;
         }
-
         .segmented-control button {
             flex: 1;
             background: none;
@@ -87,12 +81,10 @@
             transition: all 0.15s ease;
             white-space: nowrap;
         }
-
         .segmented-control button.active {
             background-color: #3a3a3c;
             color: var(--text-color);
         }
-
         .scanner-container {
             position: relative;
             width: 100%;
@@ -105,13 +97,11 @@
             align-items: center;
             justify-content: center;
         }
-
         #camera-view {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-
         .target-ring {
             position: absolute;
             width: 65px;
@@ -121,7 +111,6 @@
             pointer-events: none;
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
         }
-
         .btn-primary {
             width: 100%;
             background-color: var(--accent-color);
@@ -137,16 +126,13 @@
             justify-content: center;
             gap: 8px;
         }
-
         .btn-primary:active {
             opacity: 0.8;
         }
-
         .result-box {
             text-align: center;
             padding: 22px 10px;
         }
-
         .nd-value {
             font-size: 58px;
             font-weight: 800;
@@ -155,24 +141,20 @@
             margin-bottom: 8px;
             letter-spacing: -1px;
         }
-
         .settings-suggested {
             font-size: 15px;
             color: var(--text-muted);
             font-weight: 500;
         }
-
         .settings-suggested strong {
             color: #34c759;
         }
-
         #lux-debug {
             font-size: 11px;
             color: var(--text-muted);
             margin-top: 8px;
             font-family: monospace;
         }
-
         canvas {
             display: none;
         }
@@ -181,8 +163,8 @@
 <body>
 
     <header>
-        <h1>A+G AIR // FLEET ND TOOL</h1>
-        <div class="subtitle">Mavic, Air & Mini Setup</div>
+        <img src="logo.png" alt="APLUSG" class="brand-logo" onerror="this.style.display='none';">
+        <div class="subtitle">A+G AIR // FLEET ND TOOL</div>
     </header>
 
     <div class="card">
@@ -197,8 +179,7 @@
 
     <div class="card">
         <label>Obiettivo / Ottica</label>
-        <div class="segmented-control" id="lens-control">
-            </div>
+        <div class="segmented-control" id="lens-control"></div>
     </div>
 
     <div class="card">
@@ -217,7 +198,6 @@
             <div class="target-ring"></div>
         </div>
         <button class="btn-primary" id="scan-btn" onclick="analyzeLight()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             ANALIZZA LUMINOSITÀ
         </button>
     </div>
@@ -232,12 +212,11 @@
     <canvas id="analyzer-canvas" width="100" height="100"></canvas>
 
     <script>
-        // Database della flotta droni e delle loro ottiche native
         const fleetDatabase = {
             mavic4pro: {
                 name: "Mavic 4 Pro",
                 lenses: [
-                    { id: "main", label: "1x (24mm)", variable: true, minAperture: 2.8, maxAperture: 11.0, defaultAperture: 4.0 },
+                    { id: "main", label: "1x (28mm)", variable: true, minAperture: 2.8, maxAperture: 11.0, defaultAperture: 4.0 },
                     { id: "tele3x", label: "3x (70mm)", variable: false, aperture: 3.0 },
                     { id: "tele7x", label: "7x (166mm)", variable: false, aperture: 4.0 }
                 ]
@@ -275,7 +254,6 @@
         let canvas = document.getElementById('analyzer-canvas');
         let ctx = canvas.getContext('2d');
 
-        // Avvio camera
         async function initCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -296,14 +274,9 @@
         function selectDrone(droneId, element) {
             currentDrone = droneId;
             currentLensIndex = 0;
-
-            // Aggiorna UI droni
             document.querySelectorAll('#drone-control button').forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
-
-            // Rigenera selettore obiettivi
             renderLensControl();
-
             if (lastLuminance !== null) analyzeLight();
         }
 
@@ -311,7 +284,6 @@
             const container = document.getElementById('lens-control');
             container.innerHTML = "";
             const lenses = fleetDatabase[currentDrone].lenses;
-
             lenses.forEach((lens, index) => {
                 const btn = document.createElement('button');
                 btn.innerText = lens.label;
@@ -331,81 +303,59 @@
             targetShutter = fps * 2;
             document.querySelectorAll('#fps-control button').forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
-            
             if (lastLuminance !== null) calculateND(lastLuminance);
         }
 
         function analyzeLight() {
             if (!video.srcObject) return;
-
             const sourceX = (video.videoWidth - 60) / 2;
             const sourceY = (video.videoHeight - 60) / 2;
             ctx.drawImage(video, sourceX, sourceY, 60, 60, 0, 0, 100, 100);
-            
             const imgData = ctx.getImageData(0, 0, 100, 100).data;
             let totalLuminance = 0;
-
             for (let i = 0; i < imgData.length; i += 4) {
                 totalLuminance += (0.2126 * imgData[i] + 0.7152 * imgData[i+1] + 0.0722 * imgData[i+2]);
             }
-
             lastLuminance = totalLuminance / (imgData.length / 4);
             calculateND(lastLuminance);
         }
 
         function calculateND(luminance) {
-            // Mappatura EV empirica basata sulla compensazione automatica di iOS
             let ev = 11; 
-            if (luminance > 225) ev = 16.5; // Luce accecante (neve/mare a mezzogiorno)
+            if (luminance > 225) ev = 16.5; 
             else if (luminance > 210) ev = 16;
-            else if (luminance > 175) ev = 15; // Sole diretto pieno
-            else if (luminance > 140) ev = 14; // Sole velato
-            else if (luminance > 100) ev = 13; // Nuvoloso chiaro / Ombra aperta
-            else ev = 11.5; // Nuvoloso intenso / Pomeriggio tardi
+            else if (luminance > 175) ev = 15; 
+            else if (luminance > 140) ev = 14; 
+            else if (luminance > 100) ev = 13; 
+            else ev = 11.5; 
 
             const activeLens = fleetDatabase[currentDrone].lenses[currentLensIndex];
             let apertureUsed = 0;
             let suggestedApertureText = "";
 
             if (activeLens.variable) {
-                // Se il diaframma è variabile lo blocchiamo sul valore ottimale di targa (f/4.0)
                 apertureUsed = activeLens.defaultAperture;
-                suggestedApertureText = `f/${apertureUsed.toFixed(1)}`;
+                suggestedApertureText = "f/" + apertureUsed.toFixed(1);
             } else {
-                // Se è fisso dobbiamo calcolare la luce che entra esattamente da quel valore di fabbrica
                 apertureUsed = activeLens.aperture;
-                suggestedApertureText = `f/${apertureUsed.toFixed(1)} (Fisso)`;
+                suggestedApertureText = "f/" + apertureUsed.toFixed(1) + " (Fisso)";
             }
 
-            // Calcolo del tempo teorico pulito richiesto senza filtri: t = N^2 / 2^EV
             let idealShutter = Math.pow(apertureUsed, 2) / Math.pow(2, ev - 0.5);
             let idealDenominator = 1 / idealShutter;
-
-            // Quanti stop separano la camera dallo shutter di sicurezza a 180°?
             let stopDifference = Math.log2(idealDenominator / targetShutter);
-
             let ndFilter = "NESSUNO";
             let finalAperture = suggestedApertureText;
 
             if (stopDifference > 0) {
-                if (stopDifference <= 1.5) {
-                    ndFilter = "ND4";
-                } else if (stopDifference > 1.5 && stopDifference <= 2.5) {
-                    ndFilter = "ND8";
-                } else if (stopDifference > 2.5 && stopDifference <= 3.5) {
-                    ndFilter = "ND16";
-                } else if (stopDifference > 3.5 && stopDifference <= 4.5) {
-                    ndFilter = "ND32";
-                } else if (stopDifference > 4.5 && stopDifference <= 5.5) {
-                    ndFilter = "ND64";
-                } else if (stopDifference > 5.5 && stopDifference <= 6.8) {
-                    ndFilter = "ND128";
-                } else {
-                    ndFilter = "ND256";
-                }
+                if (stopDifference <= 1.5) ndFilter = "ND4";
+                else if (stopDifference > 1.5 && stopDifference <= 2.5) ndFilter = "ND8";
+                else if (stopDifference > 2.5 && stopDifference <= 3.5) ndFilter = "ND16";
+                else if (stopDifference > 3.5 && stopDifference <= 4.5) ndFilter = "ND32";
+                else if (stopDifference > 4.5 && stopDifference <= 5.5) ndFilter = "ND64";
+                else if (stopDifference > 5.5 && stopDifference <= 6.8) ndFilter = "ND128";
+                else ndFilter = "ND256";
 
-                // Affinamento logico per lenti variabili: se il filtro non copre perfettamente lo stop esatto,
-                // l'app muove leggermente il diaframma dinamico per compensare la frazione di stop rimasta.
                 if (activeLens.variable) {
                     if (ndFilter === "ND8" && stopDifference > 2.2) finalAperture = "f/5.0";
                     if (ndFilter === "ND16" && stopDifference > 3.2) finalAperture = "f/5.0";
@@ -413,16 +363,13 @@
                 }
             }
 
-            // Stampa a video
             document.getElementById('nd-output').innerText = ndFilter;
-            
             if (ndFilter === "NESSUNO") {
-                document.getElementById('settings-output').innerHTML = `Luce gestibile. Chiudi a <strong>${finalAperture}</strong> senza filtri.`;
+                document.getElementById('settings-output').innerHTML = "Luce gestibile. Chiudi a <strong>" + finalAperture + "</strong> senza filtri.";
             } else {
-                document.getElementById('settings-output').innerHTML = `Monta <strong>${ndFilter}</strong> e imposta la camera a <strong>${finalAperture}</strong>`;
+                document.getElementById('settings-output').innerHTML = "Monta <strong>" + ndFilter + "</strong> e imposta la camera a <strong>" + finalAperture + "</strong>";
             }
-
-            document.getElementById('lux-debug').innerText = `EV: ${ev} | Shutter: 1/${targetShutter}s | Obiettivo: ${activeLens.label}`;
+            document.getElementById('lux-debug').innerText = "EV: " + ev + " | Shutter: 1/" + targetShutter + "s | Obiettivo: " + activeLens.label;
         }
 
         window.addEventListener('DOMContentLoaded', () => {
