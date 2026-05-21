@@ -65,13 +65,13 @@
             display: flex;
             background-color: #1c1c1e;
             border-radius: 10px;
-            padding: 2px;
-            gap: 2px;
+            padding: 4px;
+            gap: 4px;
         }
         .segmented-control button {
             flex: 1;
             background: none;
-            border: none;
+            border: 2px solid transparent; /* Spazio per evitare scatti al click */
             color: var(--text-muted);
             padding: 10px 4px;
             font-size: 13px;
@@ -81,9 +81,12 @@
             transition: all 0.15s ease;
             white-space: nowrap;
         }
+        /* Stile aggiornato per l'elemento selezionato */
         .segmented-control button.active {
             background-color: #3a3a3c;
             color: var(--text-color);
+            border-color: var(--accent-color); /* Bordo blu elettrico */
+            box-shadow: 0 0 8px rgba(0, 122, 255, 0.3); /* Effetto risalto luminoso */
         }
         .scanner-container {
             position: relative;
@@ -164,7 +167,7 @@
 
     <header>
         <img src="logo.png" alt="APLUSG" class="brand-logo" onerror="this.style.display='none';">
-        <div class="subtitle">FLEET ND TOOL</div>
+        <div class="subtitle">A+G AIR // FLEET ND TOOL</div>
     </header>
 
     <div class="card">
