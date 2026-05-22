@@ -71,7 +71,7 @@
         .segmented-control button {
             flex: 1;
             background: none;
-            border: 2px solid transparent; /* Spazio per evitare scatti al click */
+            border: 2px solid transparent !important;
             color: var(--text-muted);
             padding: 10px 4px;
             font-size: 13px;
@@ -81,12 +81,11 @@
             transition: all 0.15s ease;
             white-space: nowrap;
         }
-        /* Stile aggiornato per l'elemento selezionato */
         .segmented-control button.active {
-            background-color: #3a3a3c;
-            color: var(--text-color);
-            border-color: var(--accent-color); /* Bordo blu elettrico */
-            box-shadow: 0 0 8px rgba(0, 122, 255, 0.3); /* Effetto risalto luminoso */
+            background-color: #3a3a3c !important;
+            color: var(--text-color) !important;
+            border-color: var(--accent-color) !important;
+            box-shadow: 0 0 10px rgba(0, 122, 255, 0.4) !important;
         }
         .scanner-container {
             position: relative;
@@ -219,7 +218,7 @@
             mavic4pro: {
                 name: "Mavic 4 Pro",
                 lenses: [
-                    { id: "main", label: "1x (28mm)", variable: true, minAperture: 2.8, maxAperture: 11.0, defaultAperture: 4.0 },
+                    { id: "main", label: "1x (28mm)", variable: true, minAperture: 2.8, maxAperture: 11.0, defaultAperture: 2.8 },
                     { id: "tele3x", label: "3x (70mm)", variable: false, aperture: 3.0 },
                     { id: "tele7x", label: "7x (166mm)", variable: false, aperture: 4.0 }
                 ]
@@ -234,7 +233,7 @@
             mavic3pro: {
                 name: "Mavic 3 Pro",
                 lenses: [
-                    { id: "hasselblad", label: "1x (24mm)", variable: true, minAperture: 2.8, maxAperture: 11.0, defaultAperture: 4.0 },
+                    { id: "hasselblad", label: "1x (24mm)", variable: true, minAperture: 2.8, maxAperture: 11.0, defaultAperture: 2.8 },
                     { id: "tele3x", label: "3x (70mm)", variable: false, aperture: 2.8 },
                     { id: "tele7x", label: "7x (166mm)", variable: false, aperture: 3.4 }
                 ]
@@ -360,9 +359,9 @@
                 else ndFilter = "ND256";
 
                 if (activeLens.variable) {
-                    if (ndFilter === "ND8" && stopDifference > 2.2) finalAperture = "f/5.0";
-                    if (ndFilter === "ND16" && stopDifference > 3.2) finalAperture = "f/5.0";
-                    if (ndFilter === "ND64" && stopDifference > 5.2) finalAperture = "f/5.6";
+                    if (ndFilter === "ND8" && stopDifference > 2.2) finalAperture = "f/4.0";
+                    if (ndFilter === "ND16" && stopDifference > 3.2) finalAperture = "f/4.0";
+                    if (ndFilter === "ND64" && stopDifference > 5.2) finalAperture = "f/4.5";
                 }
             }
 
