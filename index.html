@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>APLUSG - ND Fleet Calc</title>
+    <title>Fleet ND Calc</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ND Calc">
@@ -34,17 +34,11 @@
             flex-direction: column;
             align-items: flex-start;
         }
-        .brand-logo {
-            height: 28px; 
-            width: auto;
-            object-fit: contain;
-            margin-bottom: 6px;
-        }
-        .subtitle {
-            color: var(--text-muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .brand-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text-color);
         }
         .card {
             background-color: var(--card-bg);
@@ -86,6 +80,22 @@
             color: var(--text-color) !important;
             border-color: var(--accent-color) !important;
             box-shadow: 0 0 10px rgba(0, 122, 255, 0.4) !important;
+        }
+        .select-input {
+            width: 100%;
+            background-color: #1c1c1e;
+            color: var(--text-color);
+            border: 2px solid transparent;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 10px;
+            outline: none;
+            transition: all 0.15s ease;
+            -webkit-appearance: none;
+        }
+        .select-input:focus {
+            border-color: var(--accent-color);
         }
         .scanner-container {
             position: relative;
@@ -160,14 +170,24 @@
         canvas {
             display: none;
         }
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
 
     <header>
-        <img src="logo.png" alt="APLUSG" class="brand-logo" onerror="this.style.display='none';">
-        <div class="subtitle">FLEET ND TOOL</div>
+        <div class="brand-title">Fleet ND Calc</div>
     </header>
+
+    <div class="card">
+        <label>Metodo di Calcolo</label>
+        <div class="segmented-control" id="mode-control">
+            <button class="active" onclick="switchMode('manual', this)">Radiocomando</button>
+            <button onclick="switchMode('camera', this)">Fotocamera Live</button>
+        </div>
+    </div>
 
     <div class="card">
         <label>Drone in uso</label>
@@ -185,15 +205,39 @@
     </div>
 
     <div class="card">
-        <label>Frame Rate (Otturatore 180°)</label>
+        <label>Frame Rate desiderato</label>
         <div class="segmented-control" id="fps-control">
-            <button class="active" onclick="setFps(25, this)">25 fps</button>
-            <button onclick="setFps(50, this)">50 fps</button>
-            <button onclick="setFps(60, this)">60 fps</button>
+            <button class="active" onclick="setFps(25, this)">25 fps (1/50)</button>
+            <button onclick="setFps(50, this)">50 fps (1/100)</button>
+            <button onclick="setFps(60, this)">60 fps (1/120)</button>
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="manual-ui">
+        <label>Shutter attuale sul radiocomando (Senza ND / ISO 100)</label>
+        <select class="select-input" id="shutter-select" onchange="calculateManualND()">
+            <option value="100">1/100 s</option>
+            <option value="160">1/160 s</option>
+            <option value="240">1/240 s</option>
+            <option value="320">1/320 s</option>
+            <option value="400">1/400 s</option>
+            <option value="500" selected>1/500 s</option>
+            <option value="640">1/640 s</option>
+            <option value="800">1/800 s</option>
+            <option value="1000">1/1000 s</option>
+            <option value="1250">1/1250 s</option>
+            <option value="1600">1/1600 s</option>
+            <option value="2000">1/2000 s</option>
+            <option value="2500">1/2500 s</option>
+            <option value="3200">1/3200 s</option>
+            <option value="4000">1/4000 s</option>
+            <option value="5000">1/5000 s</option>
+            <option value="6400">1/6400 s</option>
+            <option value="8000">1/8000 s</option>
+        </select>
+    </div>
+
+    <div class="card hidden" id="camera-ui">
         <label>Inquadra il cielo nel mirino</label>
         <div class="scanner-container">
             <video id="camera-view" autoplay playsinline muted></video>
@@ -207,8 +251,8 @@
     <div class="card result-box">
         <label>Filtro ND Richiesto</label>
         <div class="nd-value" id="nd-output">--</div>
-        <div class="settings-suggested" id="settings-output">Scegli la configurazione e scansiona il cielo.</div>
-        <div id="lux-debug">EV: -- | Shutter: -- | Diaframma: --</div>
+        <div class="settings-suggested" id="settings-output">Scegli la configurazione.</div>
+        <div id="lux-debug">Metodo: Radiocomando</div>
     </div>
 
     <canvas id="analyzer-canvas" width="100" height="100"></canvas>
@@ -246,30 +290,61 @@
             }
         };
 
+        let currentMode = "manual";
         let currentDrone = "mavic4pro";
         let currentLensIndex = 0;
         let targetFps = 25;
         let targetShutter = 50; 
         let lastLuminance = null;
+        let streamActive = null;
 
         let video = document.getElementById('camera-view');
         let canvas = document.getElementById('analyzer-canvas');
         let ctx = canvas.getContext('2d');
 
+        function switchMode(mode, element) {
+            currentMode = mode;
+            document.querySelectorAll('#mode-control button').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+
+            if (mode === 'manual') {
+                document.getElementById('manual-ui').classList.remove('hidden');
+                document.getElementById('camera-ui').classList.add('hidden');
+                stopCamera();
+                calculateManualND();
+            } else {
+                document.getElementById('manual-ui').classList.add('hidden');
+                document.getElementById('camera-ui').classList.remove('hidden');
+                initCamera();
+                document.getElementById('nd-output').innerText = "--";
+                document.getElementById('settings-output').innerText = "Inquadra e premi analizza.";
+                document.getElementById('lux-debug').innerText = "Metodo: Fotocamera Live";
+            }
+        }
+
         async function initCamera() {
+            if (streamActive) return;
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
+                streamActive = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: { exact: "environment" }, width: { ideal: 640 }, height: { ideal: 480 } },
                     audio: false
                 });
-                video.srcObject = stream;
+                video.srcObject = streamActive;
             } catch (err) {
                 try {
-                    const fallback = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                    video.srcObject = fallback;
+                    streamActive = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    video.srcObject = streamActive;
                 } catch (e) {
-                    document.getElementById('settings-output').innerText = "Abilita la fotocamera nelle impostazioni di iOS.";
+                    document.getElementById('settings-output').innerText = "Abilita la fotocamera nelle impostazioni.";
                 }
+            }
+        }
+
+        function stopCamera() {
+            if (streamActive) {
+                streamActive.getTracks().forEach(track => track.stop());
+                streamActive = null;
+                video.srcObject = null;
             }
         }
 
@@ -279,7 +354,7 @@
             document.querySelectorAll('#drone-control button').forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
             renderLensControl();
-            if (lastLuminance !== null) analyzeLight();
+            updateCalculations();
         }
 
         function renderLensControl() {
@@ -294,7 +369,7 @@
                     document.querySelectorAll('#lens-control button').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     currentLensIndex = index;
-                    if (lastLuminance !== null) calculateND(lastLuminance);
+                    updateCalculations();
                 };
                 container.appendChild(btn);
             });
@@ -305,7 +380,49 @@
             targetShutter = fps * 2;
             document.querySelectorAll('#fps-control button').forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
-            if (lastLuminance !== null) calculateND(lastLuminance);
+            updateCalculations();
+        }
+
+        function updateCalculations() {
+            if (currentMode === 'manual') {
+                calculateManualND();
+            } else if (lastLuminance !== null) {
+                calculateCameraND(lastLuminance);
+            }
+        }
+
+        function calculateManualND() {
+            const currentShutter = parseFloat(document.getElementById('shutter-select').value);
+            const activeLens = fleetDatabase[currentDrone].lenses[currentLensIndex];
+            
+            let stopDifference = Math.log2(currentShutter / targetShutter);
+            
+            let ndFilter = "NESSUNO";
+            let apertureText = activeLens.variable ? "f/" + activeLens.defaultAperture.toFixed(1) : "f/" + activeLens.aperture.toFixed(1) + " (Fisso)";
+
+            if (stopDifference > 0) {
+                if (stopDifference <= 1.5) ndFilter = "ND4";
+                else if (stopDifference > 1.5 && stopDifference <= 2.5) ndFilter = "ND8";
+                else if (stopDifference > 2.5 && stopDifference <= 3.5) ndFilter = "ND16";
+                else if (stopDifference > 3.5 && stopDifference <= 4.5) ndFilter = "ND32";
+                else if (stopDifference > 4.5 && stopDifference <= 5.5) ndFilter = "ND64";
+                else if (stopDifference > 5.5 && stopDifference <= 6.8) ndFilter = "ND128";
+                else ndFilter = "ND256";
+
+                if (activeLens.variable) {
+                    if (ndFilter === "ND8" && stopDifference > 2.2) apertureText = "f/4.0";
+                    if (ndFilter === "ND16" && stopDifference > 3.2) apertureText = "f/4.0";
+                    if (ndFilter === "ND64" && stopDifference > 5.2) apertureText = "f/4.5";
+                }
+            }
+
+            document.getElementById('nd-output').innerText = ndFilter;
+            if (ndFilter === "NESSUNO") {
+                document.getElementById('settings-output').innerHTML = "Luce ottimale. Imposta la camera a <strong>" + apertureText + "</strong>.";
+            } else {
+                document.getElementById('settings-output').innerHTML = "Monta <strong>" + ndFilter + "</strong> e tieni la camera a <strong>" + apertureText + "</strong>";
+            }
+            document.getElementById('lux-debug').innerText = "Target: 1/" + targetShutter + "s | Rilevato: 1/" + currentShutter + "s | Stop di taglio: ~" + stopDifference.toFixed(1);
         }
 
         function analyzeLight() {
@@ -319,10 +436,10 @@
                 totalLuminance += (0.2126 * imgData[i] + 0.7152 * imgData[i+1] + 0.0722 * imgData[i+2]);
             }
             lastLuminance = totalLuminance / (imgData.length / 4);
-            calculateND(lastLuminance);
+            calculateCameraND(lastLuminance);
         }
 
-        function calculateND(luminance) {
+        function calculateCameraND(luminance) {
             let ev = 11; 
             if (luminance > 225) ev = 16.5; 
             else if (luminance > 210) ev = 16;
@@ -332,22 +449,13 @@
             else ev = 11.5; 
 
             const activeLens = fleetDatabase[currentDrone].lenses[currentLensIndex];
-            let apertureUsed = 0;
-            let suggestedApertureText = "";
-
-            if (activeLens.variable) {
-                apertureUsed = activeLens.defaultAperture;
-                suggestedApertureText = "f/" + apertureUsed.toFixed(1);
-            } else {
-                apertureUsed = activeLens.aperture;
-                suggestedApertureText = "f/" + apertureUsed.toFixed(1) + " (Fisso)";
-            }
+            let apertureUsed = activeLens.variable ? activeLens.defaultAperture : activeLens.aperture;
+            let apertureText = activeLens.variable ? "f/" + apertureUsed.toFixed(1) : "f/" + apertureUsed.toFixed(1) + " (Fisso)";
 
             let idealShutter = Math.pow(apertureUsed, 2) / Math.pow(2, ev - 0.5);
             let idealDenominator = 1 / idealShutter;
             let stopDifference = Math.log2(idealDenominator / targetShutter);
             let ndFilter = "NESSUNO";
-            let finalAperture = suggestedApertureText;
 
             if (stopDifference > 0) {
                 if (stopDifference <= 1.5) ndFilter = "ND4";
@@ -359,24 +467,24 @@
                 else ndFilter = "ND256";
 
                 if (activeLens.variable) {
-                    if (ndFilter === "ND8" && stopDifference > 2.2) finalAperture = "f/4.0";
-                    if (ndFilter === "ND16" && stopDifference > 3.2) finalAperture = "f/4.0";
-                    if (ndFilter === "ND64" && stopDifference > 5.2) finalAperture = "f/4.5";
+                    if (ndFilter === "ND8" && stopDifference > 2.2) apertureText = "f/4.0";
+                    if (ndFilter === "ND16" && stopDifference > 3.2) apertureText = "f/4.0";
+                    if (ndFilter === "ND64" && stopDifference > 5.2) apertureText = "f/4.5";
                 }
             }
 
             document.getElementById('nd-output').innerText = ndFilter;
             if (ndFilter === "NESSUNO") {
-                document.getElementById('settings-output').innerHTML = "Luce gestibile. Chiudi a <strong>" + finalAperture + "</strong> senza filtri.";
+                document.getElementById('settings-output').innerHTML = "Luce gestibile. Chiudi a <strong>" + apertureText + "</strong> senza filtri.";
             } else {
-                document.getElementById('settings-output').innerHTML = "Monta <strong>" + ndFilter + "</strong> e imposta la camera a <strong>" + finalAperture + "</strong>";
+                document.getElementById('settings-output').innerHTML = "Monta <strong>" + ndFilter + "</strong> e imposta la camera a <strong>" + apertureText + "</strong>";
             }
-            document.getElementById('lux-debug').innerText = "EV: " + ev + " | Shutter: 1/" + targetShutter + "s | Obiettivo: " + activeLens.label;
+            document.getElementById('lux-debug').innerText = "EV stimato: " + ev + " | Target Shutter: 1/" + targetShutter + "s";
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            initCamera();
             renderLensControl();
+            calculateManualND();
         });
     </script>
 </body>
