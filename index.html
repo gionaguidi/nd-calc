@@ -33,6 +33,12 @@
             display: flex;
             flex-direction: column;
             align-items: flex-start;
+            gap: 6px;
+        }
+        .brand-logo {
+            height: 28px; 
+            width: auto;
+            object-fit: contain;
         }
         .brand-title {
             font-size: 20px;
@@ -178,9 +184,11 @@
 <body>
 
     <header>
+        <img src="logo.png" alt="Logo" class="brand-logo" onerror="this.style.display='none';">
         <div class="brand-title">Fleet ND Calc</div>
     </header>
 
+    <!-- Selettore Modalità Principale -->
     <div class="card">
         <label>Metodo di Calcolo</label>
         <div class="segmented-control" id="mode-control">
@@ -189,6 +197,7 @@
         </div>
     </div>
 
+    <!-- Selezione Drone -->
     <div class="card">
         <label>Drone in uso</label>
         <div class="segmented-control" id="drone-control">
@@ -199,11 +208,13 @@
         </div>
     </div>
 
+    <!-- Selezione Obiettivo -->
     <div class="card">
         <label>Obiettivo / Ottica</label>
         <div class="segmented-control" id="lens-control"></div>
     </div>
 
+    <!-- Selezione Frame Rate -->
     <div class="card">
         <label>Frame Rate desiderato</label>
         <div class="segmented-control" id="fps-control">
@@ -213,6 +224,7 @@
         </div>
     </div>
 
+    <!-- Interfaccia MODALITÀ MANUAL (Radiocomando) -->
     <div class="card" id="manual-ui">
         <label>Shutter attuale sul radiocomando (Senza ND / ISO 100)</label>
         <select class="select-input" id="shutter-select" onchange="calculateManualND()">
@@ -237,6 +249,7 @@
         </select>
     </div>
 
+    <!-- Interfaccia MODALITÀ CAMERA -->
     <div class="card hidden" id="camera-ui">
         <label>Inquadra il cielo nel mirino</label>
         <div class="scanner-container">
@@ -248,6 +261,7 @@
         </button>
     </div>
 
+    <!-- Output unico -->
     <div class="card result-box">
         <label>Filtro ND Richiesto</label>
         <div class="nd-value" id="nd-output">--</div>
