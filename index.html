@@ -52,6 +52,13 @@
             padding: 16px;
             margin-bottom: 15px;
         }
+        .flex-row {
+            display: flex;
+            gap: 12px;
+        }
+        .flex-child {
+            flex: 1;
+        }
         label {
             display: block;
             font-size: 11px;
@@ -226,27 +233,41 @@
 
     <!-- Interfaccia MODALITÀ MANUAL (Radiocomando) -->
     <div class="card" id="manual-ui">
-        <label>Shutter attuale sul radiocomando (Senza ND / ISO 100)</label>
-        <select class="select-input" id="shutter-select" onchange="calculateManualND()">
-            <option value="100">1/100 s</option>
-            <option value="160">1/160 s</option>
-            <option value="240">1/240 s</option>
-            <option value="320">1/320 s</option>
-            <option value="400">1/400 s</option>
-            <option value="500" selected>1/500 s</option>
-            <option value="640">1/640 s</option>
-            <option value="800">1/800 s</option>
-            <option value="1000">1/1000 s</option>
-            <option value="1250">1/1250 s</option>
-            <option value="1600">1/1600 s</option>
-            <option value="2000">1/2000 s</option>
-            <option value="2500">1/2500 s</option>
-            <option value="3200">1/3200 s</option>
-            <option value="4000">1/4000 s</option>
-            <option value="5000">1/5000 s</option>
-            <option value="6400">1/6400 s</option>
-            <option value="8000">1/8000 s</option>
-        </select>
+        <div class="flex-row">
+            <div class="flex-child">
+                <label>Shutter attuale</label>
+                <select class="select-input" id="shutter-select" onchange="calculateManualND()">
+                    <option value="100">1/100 s</option>
+                    <option value="160">1/160 s</option>
+                    <option value="240">1/240 s</option>
+                    <option value="320">1/320 s</option>
+                    <option value="400">1/400 s</option>
+                    <option value="500" selected>1/500 s</option>
+                    <option value="640">1/640 s</option>
+                    <option value="800">1/800 s</option>
+                    <option value="1000">1/1000 s</option>
+                    <option value="1250">1/1250 s</option>
+                    <option value="1600">1/1600 s</option>
+                    <option value="2000">1/2000 s</option>
+                    <option value="2500">1/2500 s</option>
+                    <option value="3200">1/3200 s</option>
+                    <option value="4000">1/4000 s</option>
+                    <option value="5000">1/5000 s</option>
+                    <option value="6400">1/6400 s</option>
+                    <option value="8000">1/8000 s</option>
+                </select>
+            </div>
+            <div class="flex-child" id="aperture-select-container">
+                <label>Diaframma attuale</label>
+                <select class="select-input" id="aperture-select" onchange="calculateManualND()">
+                    <option value="2.8" selected>f/2.8</option>
+                    <option value="4.0">f/4.0</option>
+                    <option value="5.6">f/5.6</option>
+                    <option value="8.0">f/8.0</option>
+                    <option value="11.0">f/11</option>
+                </select>
+            </div>
+        </div>
     </div>
 
     <!-- Interfaccia MODALITÀ CAMERA -->
@@ -368,6 +389,7 @@
             document.querySelectorAll('#drone-control button').forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
             renderLensControl();
+            updateApertureUI();
             updateCalculations();
         }
 
@@ -383,10 +405,23 @@
                     document.querySelectorAll('#lens-control button').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     currentLensIndex = index;
+                    updateApertureUI();
                     updateCalculations();
                 };
                 container.appendChild(btn);
             });
+        }
+
+        function updateApertureUI() {
+            const activeLens = fleetDatabase[currentDrone].lenses[currentLensIndex];
+            const container = document.getElementById('aperture-select-container');
+            const select = document.getElementById('aperture-select');
+            
+            if (activeLens.variable) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
         }
 
         function setFps(fps, element) {
@@ -409,10 +444,16 @@
             const currentShutter = parseFloat(document.getElementById('shutter-select').value);
             const activeLens = fleetDatabase[currentDrone].lenses[currentLensIndex];
             
-            let stopDifference = Math.log2(currentShutter / targetShutter);
+            let currentAperture = activeLens.variable ? parseFloat(document.getElementById('aperture-select').value) : activeLens.aperture;
+            let targetAperture = activeLens.variable ? activeLens.defaultAperture : activeLens.aperture; 
+
+            // Formula completa: unisce la differenza di Shutter e la differenza di Diaframma in stop legali
+            let shutterStops = Math.log2(currentShutter / targetShutter);
+            let apertureStops = Math.log2(Math.pow(currentAperture / targetAperture, 2));
+            let stopDifference = shutterStops + apertureStops;
             
             let ndFilter = "NESSUNO";
-            let apertureText = activeLens.variable ? "f/" + activeLens.defaultAperture.toFixed(1) : "f/" + activeLens.aperture.toFixed(1) + " (Fisso)";
+            let apertureText = activeLens.variable ? "f/" + targetAperture.toFixed(1) : "f/" + activeLens.aperture.toFixed(1) + " (Fisso)";
 
             if (stopDifference > 0) {
                 if (stopDifference <= 1.5) ndFilter = "ND4";
@@ -423,6 +464,7 @@
                 else if (stopDifference > 5.5 && stopDifference <= 6.8) ndFilter = "ND128";
                 else ndFilter = "ND256";
 
+                // Gestione della compensazione con chiusura del diaframma se la luce è troppa
                 if (activeLens.variable) {
                     if (ndFilter === "ND8" && stopDifference > 2.2) apertureText = "f/4.0";
                     if (ndFilter === "ND16" && stopDifference > 3.2) apertureText = "f/4.0";
@@ -434,9 +476,9 @@
             if (ndFilter === "NESSUNO") {
                 document.getElementById('settings-output').innerHTML = "Luce ottimale. Imposta la camera a <strong>" + apertureText + "</strong>.";
             } else {
-                document.getElementById('settings-output').innerHTML = "Monta <strong>" + ndFilter + "</strong> e tieni la camera a <strong>" + apertureText + "</strong>";
+                document.getElementById('settings-output').innerHTML = "Monta <strong>" + ndFilter + "</strong> e riporta la camera a <strong>" + apertureText + "</strong>";
             }
-            document.getElementById('lux-debug').innerText = "Target: 1/" + targetShutter + "s | Rilevato: 1/" + currentShutter + "s | Stop di taglio: ~" + stopDifference.toFixed(1);
+            document.getElementById('lux-debug').innerText = "Target: 1/" + targetShutter + "s | Stop totali da tagliare: ~" + stopDifference.toFixed(1);
         }
 
         function analyzeLight() {
@@ -498,6 +540,7 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             renderLensControl();
+            updateApertureUI();
             calculateManualND();
         });
     </script>
