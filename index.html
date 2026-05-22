@@ -74,6 +74,7 @@
             border-radius: 10px;
             padding: 4px;
             gap: 4px;
+            overflow-x: auto;
         }
         .segmented-control button {
             flex: 1;
@@ -226,6 +227,7 @@
         <label>Frame Rate desiderato</label>
         <div class="segmented-control" id="fps-control">
             <button class="active" onclick="setFps(25, this)">25 fps (1/50)</button>
+            <button onclick="setFps(30, this)">30 fps (1/60)</button>
             <button onclick="setFps(50, this)">50 fps (1/100)</button>
             <button onclick="setFps(60, this)">60 fps (1/120)</button>
         </div>
@@ -237,6 +239,7 @@
             <div class="flex-child">
                 <label>Shutter attuale</label>
                 <select class="select-input" id="shutter-select" onchange="calculateManualND()">
+                    <option value="60">1/60 s</option>
                     <option value="100">1/100 s</option>
                     <option value="160">1/160 s</option>
                     <option value="240">1/240 s</option>
@@ -415,7 +418,6 @@
         function updateApertureUI() {
             const activeLens = fleetDatabase[currentDrone].lenses[currentLensIndex];
             const container = document.getElementById('aperture-select-container');
-            const select = document.getElementById('aperture-select');
             
             if (activeLens.variable) {
                 container.classList.remove('hidden');
@@ -426,7 +428,12 @@
 
         function setFps(fps, element) {
             targetFps = fps;
-            targetShutter = fps * 2;
+            // Corretto calcolo dello shutter target in base alla regola dei 180°
+            if (fps === 25) targetShutter = 50;
+            else if (fps === 30) targetShutter = 60;
+            else if (fps === 50) targetShutter = 100;
+            else if (fps === 60) targetShutter = 120;
+
             document.querySelectorAll('#fps-control button').forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
             updateCalculations();
@@ -445,17 +452,17 @@
             const activeLens = fleetDatabase[currentDrone].lenses[currentLensIndex];
             
             let currentAperture = activeLens.variable ? parseFloat(document.getElementById('aperture-select').value) : activeLens.aperture;
-            let targetAperture = activeLens.variable ? activeLens.defaultAperture : activeLens.aperture; 
+            let targetAperture = activeLens.variable ? activeLens.defaultAperture : activeLens.aperture; // f/2.8 base obbligatorio
 
-            // Formula completa: unisce la differenza di Shutter e la differenza di Diaframma in stop legali
             let shutterStops = Math.log2(currentShutter / targetShutter);
             let apertureStops = Math.log2(Math.pow(currentAperture / targetAperture, 2));
             let stopDifference = shutterStops + apertureStops;
             
             let ndFilter = "NESSUNO";
-            let apertureText = activeLens.variable ? "f/" + targetAperture.toFixed(1) : "f/" + activeLens.aperture.toFixed(1) + " (Fisso)";
+            let finalAperture = targetAperture; 
 
             if (stopDifference > 0) {
+                // Calcolo pulito del filtro per mantenere f/2.8
                 if (stopDifference <= 1.5) ndFilter = "ND4";
                 else if (stopDifference > 1.5 && stopDifference <= 2.5) ndFilter = "ND8";
                 else if (stopDifference > 2.5 && stopDifference <= 3.5) ndFilter = "ND16";
@@ -464,19 +471,19 @@
                 else if (stopDifference > 5.5 && stopDifference <= 6.8) ndFilter = "ND128";
                 else ndFilter = "ND256";
 
-                // Gestione della compensazione con chiusura del diaframma se la luce è troppa
-                if (activeLens.variable) {
-                    if (ndFilter === "ND8" && stopDifference > 2.2) apertureText = "f/4.0";
-                    if (ndFilter === "ND16" && stopDifference > 3.2) apertureText = "f/4.0";
-                    if (ndFilter === "ND64" && stopDifference > 5.2) apertureText = "f/4.5";
+                // Gestione della chiusura diaframma SOLO se la luce supera le capacità del filtro ND256
+                if (activeLens.variable && stopDifference > 8.0) {
+                    finalAperture = 4.0; 
                 }
             }
+
+            let apertureText = activeLens.variable ? "f/" + finalAperture.toFixed(1) : "f/" + activeLens.aperture.toFixed(1) + " (Fisso)";
 
             document.getElementById('nd-output').innerText = ndFilter;
             if (ndFilter === "NESSUNO") {
                 document.getElementById('settings-output').innerHTML = "Luce ottimale. Imposta la camera a <strong>" + apertureText + "</strong>.";
             } else {
-                document.getElementById('settings-output').innerHTML = "Monta <strong>" + ndFilter + "</strong> e riporta la camera a <strong>" + apertureText + "</strong>";
+                document.getElementById('settings-output').innerHTML = "Monta <strong>" + ndFilter + "</strong> e imposta la camera a <strong>" + apertureText + "</strong>";
             }
             document.getElementById('lux-debug').innerText = "Target: 1/" + targetShutter + "s | Stop totali da tagliare: ~" + stopDifference.toFixed(1);
         }
@@ -505,13 +512,13 @@
             else ev = 11.5; 
 
             const activeLens = fleetDatabase[currentDrone].lenses[currentLensIndex];
-            let apertureUsed = activeLens.variable ? activeLens.defaultAperture : activeLens.aperture;
-            let apertureText = activeLens.variable ? "f/" + apertureUsed.toFixed(1) : "f/" + apertureUsed.toFixed(1) + " (Fisso)";
+            let targetAperture = activeLens.variable ? activeLens.defaultAperture : activeLens.aperture;
 
-            let idealShutter = Math.pow(apertureUsed, 2) / Math.pow(2, ev - 0.5);
+            let idealShutter = Math.pow(targetAperture, 2) / Math.pow(2, ev - 0.5);
             let idealDenominator = 1 / idealShutter;
             let stopDifference = Math.log2(idealDenominator / targetShutter);
             let ndFilter = "NESSUNO";
+            let finalAperture = targetAperture;
 
             if (stopDifference > 0) {
                 if (stopDifference <= 1.5) ndFilter = "ND4";
@@ -522,16 +529,16 @@
                 else if (stopDifference > 5.5 && stopDifference <= 6.8) ndFilter = "ND128";
                 else ndFilter = "ND256";
 
-                if (activeLens.variable) {
-                    if (ndFilter === "ND8" && stopDifference > 2.2) apertureText = "f/4.0";
-                    if (ndFilter === "ND16" && stopDifference > 3.2) apertureText = "f/4.0";
-                    if (ndFilter === "ND64" && stopDifference > 5.2) apertureText = "f/4.5";
+                if (activeLens.variable && stopDifference > 8.0) {
+                    finalAperture = 4.0;
                 }
             }
 
+            let apertureText = activeLens.variable ? "f/" + finalAperture.toFixed(1) : "f/" + activeLens.aperture.toFixed(1) + " (Fisso)";
+
             document.getElementById('nd-output').innerText = ndFilter;
             if (ndFilter === "NESSUNO") {
-                document.getElementById('settings-output').innerHTML = "Luce gestibile. Chiudi a <strong>" + apertureText + "</strong> senza filtri.";
+                document.getElementById('settings-output').innerHTML = "Luce gestibile. Imposta a <strong>" + apertureText + "</strong> senza filtri.";
             } else {
                 document.getElementById('settings-output').innerHTML = "Monta <strong>" + ndFilter + "</strong> e imposta la camera a <strong>" + apertureText + "</strong>";
             }
