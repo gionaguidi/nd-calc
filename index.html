@@ -31,9 +31,10 @@
         header {
             margin-bottom: 22px;
             display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 6px;
+            align-items: center;
+            justify-content: space-between; /* Spinge il logo a sinistra e il titolo a destra */
+            padding-left: 2px;
+            padding-right: 12%; /* Margine destro per far tendere il testo verso il centro/destra */
         }
         .brand-logo {
             height: 28px; 
@@ -41,10 +42,11 @@
             object-fit: contain;
         }
         .brand-title {
-            font-size: 20px;
+            font-size: 15px;
             font-weight: 700;
-            letter-spacing: -0.5px;
+            letter-spacing: 0.8px;
             color: var(--text-color);
+            text-transform: uppercase; /* Forza il testo in CAPITAL LETTERS */
         }
         .card {
             background-color: var(--card-bg);
@@ -193,7 +195,7 @@
 
     <header>
         <img src="logo.png" alt="Logo" class="brand-logo" onerror="this.style.display='none';">
-        <div class="brand-title">Fleet ND Calc</div>
+        <div class="brand-title">FLEET ND CALC</div>
     </header>
 
     <!-- Selettore Modalità Principale -->
@@ -428,7 +430,6 @@
 
         function setFps(fps, element) {
             targetFps = fps;
-            // Corretto calcolo dello shutter target in base alla regola dei 180°
             if (fps === 25) targetShutter = 50;
             else if (fps === 30) targetShutter = 60;
             else if (fps === 50) targetShutter = 100;
@@ -452,7 +453,7 @@
             const activeLens = fleetDatabase[currentDrone].lenses[currentLensIndex];
             
             let currentAperture = activeLens.variable ? parseFloat(document.getElementById('aperture-select').value) : activeLens.aperture;
-            let targetAperture = activeLens.variable ? activeLens.defaultAperture : activeLens.aperture; // f/2.8 base obbligatorio
+            let targetAperture = activeLens.variable ? activeLens.defaultAperture : activeLens.aperture; 
 
             let shutterStops = Math.log2(currentShutter / targetShutter);
             let apertureStops = Math.log2(Math.pow(currentAperture / targetAperture, 2));
@@ -462,7 +463,6 @@
             let finalAperture = targetAperture; 
 
             if (stopDifference > 0) {
-                // Calcolo pulito del filtro per mantenere f/2.8
                 if (stopDifference <= 1.5) ndFilter = "ND4";
                 else if (stopDifference > 1.5 && stopDifference <= 2.5) ndFilter = "ND8";
                 else if (stopDifference > 2.5 && stopDifference <= 3.5) ndFilter = "ND16";
@@ -471,7 +471,6 @@
                 else if (stopDifference > 5.5 && stopDifference <= 6.8) ndFilter = "ND128";
                 else ndFilter = "ND256";
 
-                // Gestione della chiusura diaframma SOLO se la luce supera le capacità del filtro ND256
                 if (activeLens.variable && stopDifference > 8.0) {
                     finalAperture = 4.0; 
                 }
